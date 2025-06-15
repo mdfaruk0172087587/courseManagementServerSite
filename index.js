@@ -59,7 +59,7 @@ async function run() {
 
             // get email
             app.get('/manageCourses', async(req, res) => {
-                const userEmail = req.body.email;
+                const userEmail = req.query.instructorEmail;
                 const result = await coursesCollection.find({email: userEmail}).toArray();
                 res.send(result);
             })
@@ -67,6 +67,21 @@ async function run() {
             app.post('/courses', async(req, res) =>{
                 const newCourse = req.body;
                 const result = await coursesCollection.insertOne(newCourse);
+                res.send(result)
+            })
+
+            // edit
+            app.put('/courses/:id', async(req, res) => {
+                const id = req.params.id;
+                const query = {_id : new ObjectId(id)};
+                const user = req.body;
+                const updateDoc = {
+                    $set: {
+                        user
+                    }
+                }
+                const options = {upsert : true}
+                const result = await coursesCollection.updateOne(query, updateDoc, options);
                 res.send(result)
             })
 
