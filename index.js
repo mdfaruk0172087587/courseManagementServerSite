@@ -40,7 +40,7 @@ async function run() {
             const coursesCollection = client.db('courseDB').collection('courses');
             const userCollection = client.db('courseDB').collection('enrollments');
 
-            // get
+            // get all
             app.get('/courses', async(req, res) =>{
                 const cursor = coursesCollection.find().sort({createdAt: -1}).limit(6);
                 const result = await cursor.toArray();
@@ -54,6 +54,13 @@ async function run() {
                 const query = {_id: new ObjectId(id)};
                 
                 const result = await coursesCollection.findOne(query);
+                res.send(result);
+            })
+
+            // get email
+            app.get('/manageCourses', async(req, res) => {
+                const userEmail = req.body.email;
+                const result = await coursesCollection.find({email: userEmail}).toArray();
                 res.send(result);
             })
             // post
