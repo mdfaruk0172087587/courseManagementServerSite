@@ -47,6 +47,13 @@ async function run() {
                 res.send(result);
             })
 
+            // get popularCourses
+            app.get('/popularCourses', async(req, res) => {
+                const cursor = coursesCollection.find().sort({enrollCount: -1}).limit(6);
+                const result = await cursor.toArray();
+                res.send(result)
+            })
+
             // get id
             app.get('/courses/:id', async(req, res) =>{
                 const id = req.params.id;
@@ -66,6 +73,7 @@ async function run() {
             // post
             app.post('/courses', async(req, res) =>{
                 const newCourse = req.body;
+                newCourse.enrollCount = 0;
                 const result = await coursesCollection.insertOne(newCourse);
                 res.send(result)
             })
@@ -76,12 +84,7 @@ async function run() {
                 const query = {_id : new ObjectId(id)};
                 const user = req.body;
                 const updateDoc = {
-                    $set: {
-                        title: user.title,
-                        description: user.description,
-                        image: user.image,
-                        duration: user.duration
-                    }
+                    $set: user
                 }
                 const options = {upsert : true}
                 const result = await coursesCollection.updateOne(query, updateDoc, options);
@@ -101,7 +104,7 @@ async function run() {
 
             // enrollments email
             app.get('/enrollments', async(req, res) => {
-                const email = req.body.email;
+                const email = req.query.email;
                 const result = await userCollection.find({email}).toArray();
                 res.send(result);
             })
