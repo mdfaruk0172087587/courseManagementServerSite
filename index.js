@@ -70,18 +70,29 @@ async function run() {
                 res.send(result)
             })
 
-            // edit
+            // update
             app.put('/courses/:id', async(req, res) => {
                 const id = req.params.id;
                 const query = {_id : new ObjectId(id)};
                 const user = req.body;
                 const updateDoc = {
                     $set: {
-                        user
+                        title: user.title,
+                        description: user.description,
+                        image: user.image,
+                        duration: user.duration
                     }
                 }
                 const options = {upsert : true}
                 const result = await coursesCollection.updateOne(query, updateDoc, options);
+                res.send(result)
+            })
+
+            // delate
+            app.delete('/courses/:id', async(req, res) =>{
+                const id = req.params.id;
+                const query = {_id: new ObjectId(id)};
+                const result = await coursesCollection.deleteOne(query);
                 res.send(result)
             })
 
