@@ -96,7 +96,17 @@ async function run() {
                 res.send(result)
             })
 
-            // user post
+            // enrollments api
+
+
+            // enrollments email
+            app.get('/enrollments', async(req, res) => {
+                const email = req.body.email;
+                const result = await userCollection.find({email}).toArray();
+                res.send(result);
+            })
+
+            // enrollments post
             app.post('/enrollments', async(req, res) =>{
                 const newEnrollments = req.body;
                 const result = await userCollection.insertOne(newEnrollments);
