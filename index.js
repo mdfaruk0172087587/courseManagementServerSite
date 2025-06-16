@@ -81,6 +81,7 @@ async function run() {
         app.post('/courses', async (req, res) => {
             const newCourse = req.body;
             newCourse.enrollCount = 0;
+            newCourse.seat = 10;
             const result = await coursesCollection.insertOne(newCourse);
             res.send(result)
         })
@@ -165,12 +166,19 @@ async function run() {
             res.send(result);
         })
 
-        // delate 
+        // delate id
         app.delete('/enrollments/:id', async(req, res) => {
             const id = req.params.id;
             const query = {_id: new ObjectId(id)};
             const result = await enrollmentsCollection.deleteOne(query);
             res.send(result);
+        })
+
+        // delate unenroll api
+        app.delete('/enrollments', async(req, res) => {
+            const {email, enrollId} = req.body;
+            const result = await enrollmentsCollection.deleteOne({email, enrollId});
+            res.send(result)
         })
 
 
