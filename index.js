@@ -165,16 +165,13 @@ async function run() {
             res.send(result);
         })
 
-
-
-
-
-
-
-
-
-
-
+        // delate 
+        app.delete('/enrollments/:id', async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const result = await enrollmentsCollection.deleteOne(query);
+            res.send(result);
+        })
 
 
 
