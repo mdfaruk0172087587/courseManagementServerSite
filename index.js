@@ -1,30 +1,22 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
-
 const cors = require('cors');
 const app = express();
 const cookieParser = require('cookie-parser');
 const port = process.env.PORT || 3000
-
-
-
-
-// med el wer
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebase-admin-key.json");
+// middleware
 app.use(cors())
 app.use(express.json())
 app.use(cookieParser())
-
 app.get('/', (req, res) => {
     res.send('hello world')
 })
 console.log()
-
-
 // mongodb
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.hpujglf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
     serverApi: {
@@ -33,50 +25,66 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
-
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+const verifyFireBaseToken = async (req, res, next) => {
+    const authHeader = req.headers?.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).send({ message: 'unauthorized access' })
+    }
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        req.decoded = decoded;
+        next()
+    }
+    catch (error) {
+        return res.status(401).send({ message: 'unauthorized access' })
+    }
+}
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
         const coursesCollection = client.db('courseDB').collection('courses');
         const enrollmentsCollection = client.db('courseDB').collection('enrollments');
-
         // get all
         app.get('/courses', async (req, res) => {
             const cursor = coursesCollection.find().sort({ createdAt: -1 }).limit(6);
             const result = await cursor.toArray();
             res.send(result);
         })
-
         // not sor t all courses
         app.get('/allCourses', async (req, res) => {
             const cursor = coursesCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
-
         // get popularCourses
         app.get('/popularCourses', async (req, res) => {
             const cursor = coursesCollection.find().sort({ enrollCount: -1 }).limit(6);
             const result = await cursor.toArray();
             res.send(result)
         })
-
         // get id
         app.get('/courses/:id', async (req, res) => {
             const id = req.params.id;
-
             const query = { _id: new ObjectId(id) };
-
             const result = await coursesCollection.findOne(query);
             res.send(result);
         })
-
         // get email
-        app.get('/manageCourses', async (req, res) => {
+        app.get('/manageCourses', verifyFireBaseToken, async (req, res) => {
             const userEmail = req.query.instructorEmail;
-            const result = await coursesCollection.find({ email: userEmail }).toArray();
+            if (userEmail !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+            if (!userEmail) {
+                return res.status(400).send({ message: "Instructor email is required" });
+            }
+            const result = await coursesCollection.find({ instructorEmail: userEmail }).toArray();
             res.send(result);
-        })
+        });
         // post
         app.post('/courses', async (req, res) => {
             const newCourse = req.body;
@@ -85,7 +93,6 @@ async function run() {
             const result = await coursesCollection.insertOne(newCourse);
             res.send(result)
         })
-
         // update
         app.put('/courses/:id', async (req, res) => {
             const id = req.params.id;
@@ -98,7 +105,6 @@ async function run() {
             const result = await coursesCollection.updateOne(query, updateDoc, options);
             res.send(result)
         })
-
         // delate
         app.delete('/courses/:id', async (req, res) => {
             const id = req.params.id;
@@ -106,10 +112,7 @@ async function run() {
             const result = await coursesCollection.deleteOne(query);
             res.send(result)
         })
-
         // enrollments api
-
-
         //get enrollments email 
         app.get('/enrollments', async (req, res) => {
             const userEmail = req.query.email;
@@ -117,75 +120,59 @@ async function run() {
                 email: userEmail
             }
             const result = await enrollmentsCollection.find(query).toArray();
-
-
             res.send(result);
-
         })
-
         // myEnrolledCourses
-        app.get('/myEnrolledCourses', async (req, res) => {
+        app.get('/myEnrolledCourses', verifyFireBaseToken, async (req, res) => {
             const userEmail = req.query.email;
+            if (userEmail !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
             if (!userEmail) {
                 return res.status(400).send({ error: "Email is required" });
             }
-
             try {
                 const enrollments = await enrollmentsCollection.find({ email: userEmail }).toArray();
-
                 const enrolledCoursesWithDetails = [];
-
                 for (const enrollment of enrollments) {
                     const courseId = enrollment.enrollId;
-
                     const courseDetails = await coursesCollection.findOne({ _id: new ObjectId(courseId) });
-
                     if (courseDetails) {
                         enrolledCoursesWithDetails.push({
-                            _id: enrollment._id, 
+                            _id: enrollment._id,
                             email: enrollment.email,
                             enrollId: enrollment.enrollId,
                             courseDetails
                         });
                     }
                 }
-
                 res.send(enrolledCoursesWithDetails);
-
             } catch (error) {
                 console.error("Error in /myEnrolledCourses:", error);
                 res.status(500).send({ error: "Something went wrong" });
             }
         });
-
-
         // enrollments post
         app.post('/enrollments', async (req, res) => {
             const newEnrollments = req.body;
             const result = await enrollmentsCollection.insertOne(newEnrollments);
             res.send(result);
         })
-
         // delate id
-        app.delete('/enrollments/:id', async(req, res) => {
+        app.delete('/enrollments/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await enrollmentsCollection.deleteOne(query);
             res.send(result);
         })
-
         // delate unenroll api
-        app.delete('/enrollments', async(req, res) => {
-            const {email, enrollId} = req.body;
-            const result = await enrollmentsCollection.deleteOne({email, enrollId});
+        app.delete('/enrollments', async (req, res) => {
+            const { email, enrollId } = req.query;
+            const result = await enrollmentsCollection.deleteOne({ email, enrollId });
             res.send(result)
         })
-
-
-
-
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     }
     finally {
 
