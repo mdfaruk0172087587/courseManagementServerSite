@@ -6,7 +6,8 @@ const app = express();
 const cookieParser = require('cookie-parser');
 const port = process.env.PORT || 3000
 const admin = require("firebase-admin");
-const serviceAccount = require("./firebase-admin-key.json");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
 // middleware
 app.use(cors())
 app.use(express.json())
