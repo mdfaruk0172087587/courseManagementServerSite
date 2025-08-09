@@ -51,7 +51,7 @@ async function run() {
         const enrollmentsCollection = client.db('courseDB').collection('enrollments');
         // get all
         app.get('/courses', async (req, res) => {
-            const cursor = coursesCollection.find().sort({ createdAt: -1 }).limit(6);
+            const cursor = coursesCollection.find().sort({ createdAt: -1 }).limit(8);
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -63,7 +63,7 @@ async function run() {
         })
         // get popularCourses
         app.get('/popularCourses', async (req, res) => {
-            const cursor = coursesCollection.find().sort({ enrollCount: -1 }).limit(6);
+            const cursor = coursesCollection.find().sort({ enrollCount: -1 }).limit(8);
             const result = await cursor.toArray();
             res.send(result)
         })
