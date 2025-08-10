@@ -57,10 +57,30 @@ async function run() {
         })
         // not sor t all courses
         app.get('/allCourses', async (req, res) => {
-            const cursor = coursesCollection.find();
-            const result = await cursor.toArray();
-            res.send(result);
-        })
+            try {
+                const { title, sort } = req.query; 
+
+                let query = {};
+                let options = {};
+                if (title) {
+                    query.title = { $regex: title, $options: 'i' };
+                }
+                if (sort === 'asc') {
+                    options.sort = { enrollCount: 1 };  
+                } else if (sort === 'desc') {
+                    options.sort = { enrollCount: -1 }; 
+                }
+
+                const cursor = coursesCollection.find(query, options);
+                const result = await cursor.toArray();
+                res.send(result);
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: 'Internal Server Error' });
+            }
+        });
+
         // get popularCourses
         app.get('/popularCourses', async (req, res) => {
             const cursor = coursesCollection.find().sort({ enrollCount: -1 }).limit(8);
